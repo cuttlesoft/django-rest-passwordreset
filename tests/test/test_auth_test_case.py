@@ -440,7 +440,7 @@ class AuthTestCase(APITestCase, HelperMixin):
 
         # let the token expire
         token = ResetPasswordToken.objects.all().first()
-        token.created_at = timezone.now() - timedelta(hours=password_reset_token_validation_time)
+        token.expires_at = timezone.now() - timedelta(hours=password_reset_token_validation_time)
         token.save()
 
         # clear expired tokens

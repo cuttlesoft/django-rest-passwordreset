@@ -12,8 +12,7 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
-from django_rest_passwordreset.models import ResetPasswordToken, clear_expired, get_password_reset_token_expiry_time, \
-    get_password_reset_lookup_field
+from django_rest_passwordreset.models import ResetPasswordToken, clear_expired, get_password_reset_lookup_field
 from django_rest_passwordreset.serializers import EmailSerializer, PasswordTokenSerializer, ResetTokenSerializer
 from django_rest_passwordreset.signals import reset_password_token_created, pre_password_reset, post_password_reset
 
@@ -51,13 +50,7 @@ def clear_expired_tokens():
     """
     Delete all existing expired tokens
     """
-    password_reset_token_validation_time = get_password_reset_token_expiry_time()
-
-    # datetime.now minus expiry hours
-    now_minus_expiry_time = timezone.now() - timedelta(hours=password_reset_token_validation_time)
-
-    # delete all tokens where created_at < now - 24 hours
-    clear_expired(now_minus_expiry_time)
+    clear_expired()
 
 
 def generate_token_for_email(email, user_agent='', ip_address=''):

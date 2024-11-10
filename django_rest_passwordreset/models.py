@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth import get_user_model
 
@@ -21,6 +22,25 @@ __all__ = [
     'get_password_reset_lookup_field',
     'clear_expired',
 ]
+
+
+def get_password_reset_token_expiry_time(key="default"):
+    """
+    Returns the password reset token expirty time in hours (default: 24)
+    Set Django SETTINGS.DJANGO_REST_MULTITOKENAUTH_RESET_TOKEN_EXPIRY_TIME to overwrite this time
+    :return: expiry time
+    """
+    # get token validation time
+    DEFAULT_EXPIRY_TIME = 24
+    expiry_time = getattr(settings, 'DJANGO_REST_MULTITOKENAUTH_RESET_TOKEN_EXPIRY_TIME', DEFAULT_EXPIRY_TIME)
+
+    if type(expiry_time) is dict:
+        expiry_time = expiry_time.get(key, DEFAULT_EXPIRY_TIME)
+
+    return expiry_time
+
+def set_default_expiry():
+    return timezone.now() + timezone.timedelta(hours=get_password_reset_token_expiry_time())
 
 
 class ResetPasswordToken(models.Model):
@@ -47,6 +67,10 @@ class ResetPasswordToken(models.Model):
     created_at = models.DateTimeField(
         auto_now_add=True,
         verbose_name=_("When was this token generated")
+    )
+    expires_at = models.DateTimeField(
+        verbose_name=_("When does this token expire"),
+        default=set_default_expiry
     )
 
     # Key field, though it is not the primary key of the model
@@ -79,17 +103,6 @@ class ResetPasswordToken(models.Model):
     def __str__(self):
         return "Password reset token for user {user}".format(user=self.user)
 
-
-def get_password_reset_token_expiry_time():
-    """
-    Returns the password reset token expirty time in hours (default: 24)
-    Set Django SETTINGS.DJANGO_REST_MULTITOKENAUTH_RESET_TOKEN_EXPIRY_TIME to overwrite this time
-    :return: expiry time
-    """
-    # get token validation time
-    return getattr(settings, 'DJANGO_REST_MULTITOKENAUTH_RESET_TOKEN_EXPIRY_TIME', 24)
-
-
 def get_password_reset_lookup_field():
     """
     Returns the password reset lookup field (default: email)
@@ -99,12 +112,12 @@ def get_password_reset_lookup_field():
     return getattr(settings, 'DJANGO_REST_LOOKUP_FIELD', 'email')
 
 
-def clear_expired(expiry_time):
+def clear_expired():
     """
     Remove all expired tokens
     :param expiry_time: Token expiration time
     """
-    ResetPasswordToken.objects.filter(created_at__lte=expiry_time).delete()
+    ResetPasswordToken.objects.filter(expires_at__lte=timezone.now()).delete()
 
 def eligible_for_reset(self):
     if not self.is_active:
